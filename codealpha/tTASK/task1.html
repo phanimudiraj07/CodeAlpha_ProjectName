@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeAlpha — Image Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #2a2a3a;
+    --accent: #c8a96e;
+    --accent2: #7c6fcd;
+    --text: #e8e6f0;
+    --muted: #6b6880;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
+  }
+
+  header {
+    padding: 2.5rem 3rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+  .logo span { color: var(--text); font-style: italic; }
+
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.4rem 1rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    border-radius: 2px;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  main { padding: 2.5rem 3rem; }
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .gallery {
+    columns: 4;
+    column-gap: 1rem;
+    transition: all 0.3s;
+  }
+  @media(max-width:1100px){ .gallery { columns: 3; } }
+  @media(max-width:750px){ .gallery { columns: 2; } }
+  @media(max-width:480px){ .gallery { columns: 1; } }
+
+  .gallery-item {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    transition: transform 0.35s cubic-bezier(.22,.68,0,1.2), box-shadow 0.35s;
+  }
+  .gallery-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px var(--accent);
+    z-index: 2;
+  }
+  .gallery-item img {
+    width: 100%;
+    display: block;
+    transition: transform 0.5s cubic-bezier(.22,.68,0,1.2);
+    filter: saturate(0.85) brightness(0.9);
+  }
+  .gallery-item:hover img {
+    transform: scale(1.06);
+    filter: saturate(1.1) brightness(1);
+  }
+  .gallery-item .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10,10,15,0.9) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.35s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1rem;
+  }
+  .gallery-item:hover .overlay { opacity: 1; }
+  .overlay-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+  }
+  .overlay-cat {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .gallery-item.hidden { display: none; }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.96);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    backdrop-filter: blur(12px);
+  }
+  .lightbox.open { display: flex; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .lb-inner {
+    max-width: 1000px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    position: relative;
+  }
+  .lb-img-wrap {
+    width: 100%;
+    max-height: 70vh;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lb-img-wrap img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    display: block;
+    transition: opacity 0.25s;
+  }
+  .lb-info {
+    text-align: center;
+  }
+  .lb-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--text);
+  }
+  .lb-cat {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 0.3rem;
+  }
+  .lb-counter {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+  .lb-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  .lb-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+  .lb-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .lb-close {
+    position: absolute;
+    top: -1rem;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .lb-close:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">image<span>gallery</span></div>
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-cat="all">All</button>
+    <button class="filter-btn" data-cat="nature">Nature</button>
+    <button class="filter-btn" data-cat="city">City</button>
+    <button class="filter-btn" data-cat="abstract">Abstract</button>
+    <button class="filter-btn" data-cat="portrait">Portrait</button>
+  </div>
+</header>
+<main>
+  <p class="section-label">// click any image to expand</p>
+  <div class="gallery" id="gallery"></div>
+</main>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <div class="lb-inner">
+    <button class="lb-close" id="lbClose">✕</button>
+    <div class="lb-img-wrap"><img id="lbImg" src="" alt=""></div>
+    <div class="lb-info">
+      <div class="lb-title" id="lbTitle"></div>
+      <div class="lb-cat" id="lbCat"></div>
+      <div class="lb-counter" id="lbCounter"></div>
+    </div>
+    <div class="lb-controls">
+      <button class="lb-btn" id="lbPrev">← prev</button>
+      <button class="lb-btn" id="lbNext">next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const images = [
+  { title: "Forest Mist", cat: "nature", url: "https://picsum.photos/seed/forest1/600/800" },
+  { title: "Mountain Peak", cat: "nature", url: "https://picsum.photos/seed/mountain2/800/500" },
+  { title: "Night Skyline", cat: "city", url: "https://picsum.photos/seed/city3/700/900" },
+  { title: "Rain Street", cat: "city", url: "https://picsum.photos/seed/rain4/600/400" },
+  { title: "Chromatic Drift", cat: "abstract", url: "https://picsum.photos/seed/abs5/700/700" },
+  { title: "Golden Hour", cat: "nature", url: "https://picsum.photos/seed/golden6/800/600" },
+  { title: "Urban Grid", cat: "city", url: "https://picsum.photos/seed/urban7/600/900" },
+  { title: "Fluid Geometry", cat: "abstract", url: "https://picsum.photos/seed/geo8/700/500" },
+  { title: "Still Portrait", cat: "portrait", url: "https://picsum.photos/seed/port9/500/700" },
+  { title: "Ocean Calm", cat: "nature", url: "https://picsum.photos/seed/ocean10/900/600" },
+  { title: "Neon Alley", cat: "city", url: "https://picsum.photos/seed/neon11/600/800" },
+  { title: "Depth Study", cat: "portrait", url: "https://picsum.photos/seed/depth12/600/700" },
+  { title: "Desert Dunes", cat: "nature", url: "https://picsum.photos/seed/desert13/800/500" },
+  { title: "Signal Flow", cat: "abstract", url: "https://picsum.photos/seed/signal14/700/700" },
+  { title: "City Blur", cat: "city", url: "https://picsum.photos/seed/cblur15/800/600" },
+  { title: "Tender Light", cat: "portrait", url: "https://picsum.photos/seed/tender16/500/800" },
+];
+
+const gallery = document.getElementById('gallery');
+const lightbox = document.getElementById('lightbox');
+const lbImg = document.getElementById('lbImg');
+const lbTitle = document.getElementById('lbTitle');
+const lbCat = document.getElementById('lbCat');
+const lbCounter = document.getElementById('lbCounter');
+
+let currentIndex = 0;
+let filtered = [...images];
+
+function renderGallery(cat = 'all') {
+  gallery.innerHTML = '';
+  filtered = cat === 'all' ? [...images] : images.filter(i => i.cat === cat);
+  filtered.forEach((img, idx) => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.innerHTML = `
+      <img src="${img.url}" alt="${img.title}" loading="lazy">
+      <div class="overlay">
+        <div class="overlay-title">${img.title}</div>
+        <div class="overlay-cat">${img.cat}</div>
+      </div>`;
+    item.addEventListener('click', () => openLightbox(idx));
+    gallery.appendChild(item);
+  });
+}
+
+function openLightbox(idx) {
+  currentIndex = idx;
+  updateLightbox();
+  lightbox.classList.add('open');
+}
+
+function updateLightbox() {
+  const img = filtered[currentIndex];
+  lbImg.style.opacity = 0;
+  setTimeout(() => {
+    lbImg.src = img.url;
+    lbImg.onload = () => { lbImg.style.opacity = 1; };
+  }, 100);
+  lbTitle.textContent = img.title;
+  lbCat.textContent = img.cat;
+  lbCounter.textContent = `${currentIndex + 1} / ${filtered.length}`;
+}
+
+document.getElementById('lbClose').addEventListener('click', () => lightbox.classList.remove('open'));
+lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+document.getElementById('lbPrev').addEventListener('click', () => { currentIndex = (currentIndex - 1 + filtered.length) % filtered.length; updateLightbox(); });
+document.getElementById('lbNext').addEventListener('click', () => { currentIndex = (currentIndex + 1) % filtered.length; updateLightbox(); });
+
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'ArrowLeft') { currentIndex = (currentIndex - 1 + filtered.length) % filtered.length; updateLightbox(); }
+  if (e.key === 'ArrowRight') { currentIndex = (currentIndex + 1) % filtered.length; updateLightbox(); }
+  if (e.key === 'Escape') lightbox.classList.remove('open');
+});
+
+document.getElementById('filters').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGallery(btn.dataset.cat);
+});
+
+renderGallery();
+</script>
+</body>
+</html>

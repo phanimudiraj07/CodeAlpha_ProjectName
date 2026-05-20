@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeAlpha — Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0ede8;
+    --surface: #ffffff;
+    --dark: #1a1814;
+    --red: #d64045;
+    --yellow: #f5a623;
+    --blue: #4a90d9;
+    --border: #d4cfc8;
+    --shadow: rgba(26,24,20,0.15);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    background-image:
+      radial-gradient(circle at 20% 80%, rgba(245,166,35,0.12) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(74,144,217,0.1) 0%, transparent 50%);
+  }
+  .calculator {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 340px;
+    box-shadow: 0 20px 60px var(--shadow), 0 0 0 1px var(--border);
+    position: relative;
+  }
+  .calc-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: #bbb;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+  }
+  .display {
+    background: var(--dark);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    overflow: hidden;
+    position: relative;
+  }
+  .display-expr {
+    font-size: 0.75rem;
+    color: #666;
+    min-height: 1.2em;
+    word-break: break-all;
+    text-align: right;
+    margin-bottom: 0.3rem;
+  }
+  .display-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: #f0ede8;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    word-break: break-all;
+    transition: transform 0.1s;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .display-value.pulse { transform: scale(1.04); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+  }
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dark);
+    border-radius: 10px;
+    padding: 1rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(.22,.68,0,1.3);
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+  button:active { transform: scale(0.93); }
+  button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.05);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  button:hover::after { opacity: 1; }
+  button.btn-op {
+    background: var(--dark);
+    color: #f0ede8;
+    border-color: var(--dark);
+    font-size: 1.1rem;
+  }
+  button.btn-eq {
+    background: var(--red);
+    color: white;
+    border-color: var(--red);
+    grid-column: span 2;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+  }
+  button.btn-clear {
+    background: var(--yellow);
+    color: var(--dark);
+    border-color: var(--yellow);
+    font-weight: 700;
+  }
+  button.btn-zero { grid-column: span 2; }
+  button.btn-del {
+    background: #f0ede8;
+    color: var(--red);
+    border-color: #e0dbd4;
+  }
+  .keyboard-hint {
+    text-align: center;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: #bbb;
+    margin-top: 1rem;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="calculator">
+  <div class="calc-brand">CodeAlpha — Calc v1.0</div>
+  <div class="display">
+    <div class="display-expr" id="expr"></div>
+    <div class="display-value" id="display">0</div>
+  </div>
+  <div class="grid">
+    <button class="btn-clear" data-action="clear">AC</button>
+    <button class="btn-del" data-action="del">⌫</button>
+    <button class="btn-op" data-action="pct">%</button>
+    <button class="btn-op" data-action="op" data-val="÷">÷</button>
+
+    <button data-action="num" data-val="7">7</button>
+    <button data-action="num" data-val="8">8</button>
+    <button data-action="num" data-val="9">9</button>
+    <button class="btn-op" data-action="op" data-val="×">×</button>
+
+    <button data-action="num" data-val="4">4</button>
+    <button data-action="num" data-val="5">5</button>
+    <button data-action="num" data-val="6">6</button>
+    <button class="btn-op" data-action="op" data-val="−">−</button>
+
+    <button data-action="num" data-val="1">1</button>
+    <button data-action="num" data-val="2">2</button>
+    <button data-action="num" data-val="3">3</button>
+    <button class="btn-op" data-action="op" data-val="+">+</button>
+
+    <button class="btn-zero" data-action="num" data-val="0">0</button>
+    <button data-action="dot">.</button>
+    <button class="btn-eq" data-action="eq">= </button>
+  </div>
+  <div class="keyboard-hint">keyboard supported ↑</div>
+</div>
+
+<script>
+const display = document.getElementById('display');
+const expr = document.getElementById('expr');
+let current = '0', prev = '', operator = '', freshResult = false;
+
+function setDisplay(val) {
+  display.textContent = val;
+  display.classList.remove('pulse');
+  void display.offsetWidth;
+  display.classList.add('pulse');
+  setTimeout(() => display.classList.remove('pulse'), 100);
+}
+
+function handleNum(n) {
+  if (freshResult) { current = n; freshResult = false; }
+  else current = current === '0' ? n : current + n;
+  setDisplay(current);
+}
+
+function handleOp(op) {
+  if (operator && !freshResult) calculate();
+  prev = current;
+  operator = op;
+  freshResult = true;
+  expr.textContent = `${prev} ${op}`;
+}
+
+function calculate() {
+  if (!operator || !prev) return;
+  const a = parseFloat(prev), b = parseFloat(current);
+  let res;
+  if (operator === '+') res = a + b;
+  else if (operator === '−') res = a - b;
+  else if (operator === '×') res = a * b;
+  else if (operator === '÷') res = b === 0 ? 'Error' : a / b;
+  const resStr = res === 'Error' ? 'Error' : parseFloat(res.toFixed(10)).toString();
+  expr.textContent = `${prev} ${operator} ${current} =`;
+  current = resStr;
+  setDisplay(current);
+  operator = ''; prev = '';
+  freshResult = true;
+}
+
+document.querySelector('.calculator').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const { action, val } = btn.dataset;
+  if (action === 'num') handleNum(val);
+  else if (action === 'op') handleOp(val);
+  else if (action === 'eq') calculate();
+  else if (action === 'clear') {
+    current = '0'; prev = ''; operator = ''; freshResult = false;
+    expr.textContent = ''; setDisplay('0');
+  } else if (action === 'del') {
+    if (freshResult) return;
+    current = current.length > 1 ? current.slice(0, -1) : '0';
+    setDisplay(current);
+  } else if (action === 'dot') {
+    if (freshResult) { current = '0.'; freshResult = false; }
+    else if (!current.includes('.')) current += '.';
+    setDisplay(current);
+  } else if (action === 'pct') {
+    current = String(parseFloat(current) / 100);
+    setDisplay(current);
+  }
+});
+
+const keyMap = { '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','+':'+','-':'−','*':'×','/':'÷','Enter':'eq','=':'eq','Backspace':'del','Escape':'clear','.':'.' };
+document.addEventListener('keydown', e => {
+  const mapped = keyMap[e.key];
+  if (!mapped) return;
+  if (mapped === 'eq') calculate();
+  else if (mapped === 'del') { const btn = document.querySelector('[data-action="del"]'); btn?.click(); }
+  else if (mapped === 'clear') { const btn = document.querySelector('[data-action="clear"]'); btn?.click(); }
+  else if (['+','−','×','÷'].includes(mapped)) handleOp(mapped);
+  else if (mapped === '.') { const btn = document.querySelector('[data-action="dot"]'); btn?.click(); }
+  else handleNum(mapped);
+});
+</script>
+</body>
+</html>
